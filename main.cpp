@@ -1,171 +1,88 @@
-//filename: suffix_tree.cpp
-//to build a suffix tree based on the given string ending with $
+// filename: superseq.cpp
+// to find the supersequence between AACCTTGG and ACACTGTGA
 
 #include <iostream>
 #include <cstring>
+#include <stack>
 
 using namespace std;
 
-struct node
+void superseq(char *s1, char *s2)
 {
-    char *str;
-    node *child[27];
-};
+    int m = strlen(s1)+1; // an extra row of 0
+    int n = strlen(s2)+1; // an extra column of 0
 
-node* add_node(char *s)
-{
-    node *tmp = new node;
-    tmp->str = s;
-    for(int i=0;i<27;i++)
-        tmp->child[i]=NULL;
-}
+    int **A = new int *[m];
+    for (int i=0;i<m;i++)
+        {A[i] = new int[n];}
 
-int searchnode(node* N)//return the next empty child
-{
-    for(int i=0;i<27;i++)
+    for(int i=0;i<m;i++)
     {
-        if(N->child[i]== NULL)
-            return i;
-    }
-}
+         for(int j=0;j<n;j++)
+            {A[i][j]=0;}
+    }//initiate the score matrix with 0
 
-char* substring(char *s, int start, int num)
-{
-    int n = strlen(s);
-    char *tmp = new char[n];
-    for(int i=0;i<num;i++)
+	//find the longest common subsequence
+    for(int i=1;i<m;i++)//the firt element to fill in the matrix sits at A[1][1]
     {
-        tmp[i] = s[start+i];
-    }
-    tmp[num] = '\0';
-
-    return tmp;
-}
-
-int IsSubstr(char*s1,char*s2)//assume that s2 is shorter than s1
-{
-    if(!strcmp(s1,s2)) return 0;//totally match
-    int n=strlen(s2);
-    if(s1[0]!=s2[0]) return -1;//not match
-    else return 1;//substring at least at position 1
-}
-
-int match(char*ch, char*s)
-{
-    if(!IsSubstr(ch,s)) return 0;//match do nothing
-
-    if(strlen(ch)<strlen(s)||strlen(ch)==strlen(s))//not completely match
-    {
-        if(IsSubstr(s,ch)!=1)//child is not a substring of s
-            return -1;//not match
-        else//child is a substring
+        for(int j=1;j<n;j++)
         {
-            for(int i=0;i<strlen(ch);i++)
-            {
-                if(ch[i]!=s[i])
-                    return i;//return the position that child not match with s
-            }
-        }
-    }
-    else if(strlen(ch)> strlen(s))
-    {
-        if(IsSubstr(ch,s)!=1)
-            return -1;//not match
-        else
-        {
-            for(int i=0;i<strlen(s);i++)
-            {
-                if(ch[i]!=s[i])
-                    return i;//return the position that child not match with s
-            }
+            int match = 0;//default mismatch = 0
+            if(s1[i-1]==s2[j-1]) {match=1;}//i-1 and j-1 to ignore the zeros row(column) in matrix
+            A[i][j] = max(max(A[i-1][j-1]+match,A[i-1][j]),A[i][j-1]);
         }
     }
 
-    else return -1;//not match or substring match
-}
-
-node* searchpattern(node *root, char *s)
-{
-    if(!root) return NULL;
-    else
+    m--;n--;
+	//for debug
+    /*for (int i=0;i<m;i++){
+        for (int j=0;j<n;j++)
     {
-        int i=0;
-        while(root->child[i])
-        {
-            if(root->child[i]->str[0]==s[0])
-            {
-                node *tmp = root->child[i];
-                return tmp;
-            }
-            i++;
-        }
+        cout << A[i][j];
     }
-    return NULL;
-}
+        cout << endl;
+    }
+    cout << A[m-1][n-1] << endl;*/
 
-
-void suffix_tree(node *root, char*s)
-{
-    int n=strlen(s);
-    node *N = searchpattern(root,s);
-    if(!N) root->child[searchnode(root)] = add_node(s);//pattern not found
-    else
+    stack<char> s;//use stack to store the route and for reverse output when backtracking
+    while(n||m)
     {
-        int k = match(N->str,s);
-        char *sub = substring(N->str, k, strlen(N->str)-k);
-        if(sub[strlen(sub)-1]=='$'&&sub!="")//leaf
+        if(m==0)//reach the first row
         {
-                suffix_tree(N,sub);//root difference
-                N->str = substring(N->str,0,k);//root string remain
-                s = substring(s, k, n-k);
-                if(s!="") suffix_tree(N,s);//pattern remain
+            s.push(s2[n-1]);
+            n--;
         }
-        else//middle node
+        else if(n==0)//reach the first column
         {
-                int j=searchnode(N);
-                if(sub!="") N->child[j] = add_node(sub);
-
-                for(int i=0;i<j;i++)
-                {
-                    N->child[j]->child[i] = N->child[i];
-                    N->child[i] = NULL;
-                }
-                N->child[0] = N->child[j];
-                N->child[j] = NULL;
-
-                N->str = substring(N->str,0,k);//root string remain
-                s = substring(s, k, n-k);
-                if(s!="") suffix_tree(N,s);//pattern remain
+            s.push(s1[m-1]);
+            m--;
         }
-    }
-}
-
-void display(node *root, int n)
-{
-    if(root)
-    {
-        for(int i=0;i<n;i++)
+        else if(A[m][n]==A[m-1][n])//when s2 has a gap
         {
-            display(root->child[i],n);
+            s.push(s1[m-1]);//output corresponding s1 element
+            m--;
         }
-        cout << root->str << endl;
-    }
+        else if(A[m][n]==A[m][n-1])//when s1 has a gap
+        {
+            s.push(s2[n-1]);//output corresponding s2 element
+            n--;
+        }
+        else if(A[m][n] == A[m-1][n-1]+1)//match
+        {
+            s.push(s2[n-1]);//output the common element
+            m--; n--;
+        }
+     }
+
+     while(!s.empty()){cout << s.top(); s.pop();}
 }
 
 int main()
 {
-    char *s = "banana$";
-    int n = strlen(s);
+    char *s = "ACGTC";
+    char *t = "ATAT";
 
-    node *root = add_node("+");
-
-    for(int i=0;i<n;i++)
-    {
-        suffix_tree(root,substring(s,i,n-i));
-        //display(root,n);
-    }
-
-    display(root, n);
+    superseq(s,t);
 
     return 0;
 }
